@@ -9,26 +9,7 @@ from tqdm import tqdm
 from src.models.crnn import CRNN
 from src.data.dataset import ViHTRDataset, AspectGroupedBatchSampler
 from src.data.vocab import Vocab
-from src.utils.metrics import ctc_decode
-import editdistance
-
-def calculate_metrics(preds, targets):
-    total_cer, total_wer, total_chars, total_words = 0, 0, 0, 0
-    
-    for pred, target in zip(preds, targets):
-        # CER
-        cer_dist = editdistance.eval(pred, target)
-        total_cer += cer_dist
-        total_chars += len(target)
-        
-        # WER
-        pred_words = pred.split()
-        target_words = target.split()
-        wer_dist = editdistance.eval(pred_words, target_words)
-        total_wer += wer_dist
-        total_words += len(target_words)
-        
-    return total_cer, total_chars, total_wer, total_words
+from src.utils.metrics import ctc_decode, calculate_metrics
 
 def train(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -90,6 +71,7 @@ def train(args):
         model.eval()
         val_loss = 0
         total_cer_dist, total_cer_chars = 0, 0
+        total_dcer_dist, total_dcer_chars = 0, 0
         
         with torch.no_grad():
             for batch in val_loader:
@@ -111,19 +93,22 @@ def train(args):
                     tgt_texts.append(vocab.decode(targets[idx:idx+length].tolist()))
                     idx += length
                     
-                cer_dist, chars, _, _ = calculate_metrics(preds, tgt_texts)
+                cer_dist, chars, wer_dist, words, dcer_dist, diacs = calculate_metrics(preds, tgt_texts)
                 total_cer_dist += cer_dist
                 total_cer_chars += chars
+                total_dcer_dist += dcer_dist
+                total_dcer_chars += diacs
                 
         val_loss /= len(val_loader)
         val_cer = total_cer_dist / total_cer_chars * 100
+        val_dcer = (total_dcer_dist / total_dcer_chars * 100) if total_dcer_chars > 0 else 0.0
         
-        print(f"Epoch {ep} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | CER: {val_cer:.2f}%")
+        print(f"Epoch {ep} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | CER: {val_cer:.2f}% | D-CER: {val_dcer:.2f}%")
         
         if val_cer < best_cer:
             best_cer = val_cer
             torch.save(model.state_dict(), args.save_path)
-            print(f">>> Saved new best model to {args.save_path} (CER: {best_cer:.2f}%)")
+            print(f">>> Saved new best model to {args.save_path} (CER: {best_cer:.2f}%, D-CER: {val_dcer:.2f}%)")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -31,6 +31,8 @@ except Exception as e:
 def predict(image):
     if model is None or vocab is None:
         return "Error: Model or Vocab not found in checkpoints/ folder."
+    if image is None:
+        return "Please upload an image first."
     
     # Preprocess
     img = image.convert('RGB')
@@ -56,7 +58,9 @@ example_images = []
 if os.path.exists("test_samples/sample_1.jpg"):
     example_images.append(["test_samples/sample_1.jpg"])
 
-with gr.Blocks(theme=gr.themes.Soft()) as demo:
+theme = gr.themes.Soft()
+
+with gr.Blocks() as demo:
     gr.Markdown("# Vietnamese Handwritten Text Recognition (HTR)")
     gr.Markdown("An end-to-end deep learning model (CRNN + CTC) trained to recognize Vietnamese handwriting with high accuracy. Upload an image to test the model.")
     
@@ -65,7 +69,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
             image_input = gr.Image(type="pil", label="Upload Handwritten Image")
             submit_btn = gr.Button("Recognize Text", variant="primary")
         with gr.Column():
-            text_output = gr.Textbox(label="Predicted Text", lines=3, show_copy_button=True)
+            text_output = gr.Textbox(label="Predicted Text", lines=3, buttons=["copy"])
             
     if example_images:
         gr.Examples(examples=example_images, inputs=image_input)
@@ -73,4 +77,4 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
     submit_btn.click(fn=predict, inputs=image_input, outputs=text_output)
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, theme=theme)
