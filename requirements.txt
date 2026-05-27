@@ -1,0 +1,7 @@
+torch>=2.0.0
+torchvision
+Pillow
+editdistance
+gradio>=4.0.0
+tqdm
+numpy
