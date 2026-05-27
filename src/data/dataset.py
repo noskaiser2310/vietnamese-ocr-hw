@@ -6,6 +6,8 @@ from torch.utils.data import Dataset, Sampler
 import random
 from PIL import Image
 
+from src.data.preprocess import preprocess_for_training
+
 class VietnameseHTRDataset(Dataset):
     """
     Dataset class for loading Vietnamese handwritten text images with annotations.
@@ -145,16 +147,8 @@ class VietnameseHTRDataset(Dataset):
             print(f"[WARNING] Error reading image {img_path}: {e}")
             image = Image.new("RGB", (700, 64), color="white")
             
-        # 1. Resize ảnh giữ nguyên tỉ lệ aspect ratio về height chuẩn = 128
-        # Điều này đảm bảo nét chữ và dấu phụ không bao giờ bị bóp méo
-        w, h = image.size
-        aspect_ratio = w / h
-        new_h = 128
-        new_w = int(new_h * aspect_ratio)
-        
-        # Giới hạn chiều rộng tối đa và tối thiểu tránh lỗi bộ nhớ hoặc dị biệt
-        new_w = max(128, min(new_w, 2048))
-        image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        # Resize/crop theo cùng chuẩn preprocess dùng ở inference.
+        image = preprocess_for_training(image)
         
         # Tokenize nhãn văn bản
         target_ids = self.text_to_ids(text)

@@ -1,11 +1,11 @@
 import os
 import argparse
 import torch
-import torchvision.transforms as T
 from PIL import Image
 
 from src.models.crnn import CRNN
 from src.data.vocab import Vocab
+from src.data.preprocess import preprocess_for_inference
 from src.utils.metrics import ctc_decode
 
 def infer(img_path, ckpt_path, vocab_path):
@@ -30,17 +30,8 @@ def infer(img_path, ckpt_path, vocab_path):
         model.load_state_dict(ckpt)
     model.eval()
     
-    img = Image.open(img_path).convert('RGB')
-    w, h = img.size
-    nw = max(128, min(int(128 * w / h), 2048))
-    img = img.resize((nw, 128), Image.Resampling.LANCZOS)
-    
-    tf = T.Compose([
-        T.ToTensor(),
-        T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-    ])
-    
-    tensor = tf(img).unsqueeze(0).to(device)
+    img = Image.open(img_path)
+    tensor = preprocess_for_inference(img).unsqueeze(0).to(device)
     
     print("[INFO] Running inference...")
     with torch.no_grad():

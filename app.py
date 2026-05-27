@@ -1,11 +1,10 @@
 import gradio as gr
 import torch
-import torchvision.transforms as T
-from PIL import Image
 import os
 
 from src.models.crnn import CRNN
 from src.data.vocab import Vocab
+from src.data.preprocess import preprocess_for_inference
 from src.utils.metrics import ctc_decode
 
 # Config paths
@@ -34,18 +33,7 @@ def predict(image):
     if image is None:
         return "Please upload an image first."
     
-    # Preprocess
-    img = image.convert('RGB')
-    w, h = img.size
-    nw = max(128, min(int(128 * w / h), 2048))
-    img = img.resize((nw, 128), Image.Resampling.LANCZOS)
-    
-    tf = T.Compose([
-        T.ToTensor(),
-        T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-    ])
-    
-    tensor = tf(img).unsqueeze(0).to(device)
+    tensor = preprocess_for_inference(image).unsqueeze(0).to(device)
     
     with torch.no_grad():
         lp, _ = model(tensor)
